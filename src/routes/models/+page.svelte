@@ -12,6 +12,10 @@
     const { data } = $props();
 
     let chatText = $state('');
+    let chatResponse: string = $state('');
+    let chatMessages: Array<{ author: string, message: string }> = $state([]);
+    let abortController: AbortController | undefined = $state();
+
     let models: Model[] = $state(data.models);
     let highlightedModel: string | undefined = $state();
     let selectedModel: string | undefined = $state();
@@ -61,14 +65,39 @@
         highlightedModel = undefined;
     }
 
-    function onChatSubmit(e: SubmitEvent, modelName?: string) {
+    async function onChatSubmit(e: SubmitEvent, modelName?: string) {
         e.preventDefault();
         if (!modelName) {
             return;
         }
+        const userMessage = String(chatText);
+        chatText = '';
+
+        chatMessages.push({ author: 'user', message: userMessage });
 
         console.log(`sending ${chatText} to ${modelName}`);
+        chatResponse = '';
+        abortController = new AbortController();
+        const signal = abortController.signal;
+        const messages = api.generateCompletion({ modelName, prompt: userMessage, signal });
+        
+        for await (const message of messages) {
+            console.log('response with', message);
+            chatResponse += message.text;
+        }
+
+        chatMessages.push({ author: 'ai', message: chatResponse });
+        chatResponse = '';
         e.preventDefault();
+    }
+
+    function abortChatResponse() {
+        if (!abortController) return;
+        abortController.abort();
+
+        chatMessages.push({ author: 'ai', message: chatResponse });
+        chatResponse = '';
+        abortController = undefined;
     }
 </script>
 
@@ -132,9 +161,33 @@
 
         {#if activeModelName}
             <form class="chat" onsubmit={(e) => onChatSubmit(e, activeModelName)}>
-                <input type="text" bind:value={chatText}>
+                {#each chatMessages as message}
+                    <div>
+                        <span>
+                            {message.author}:
+                        </span>
+                        <span>
+                            {message.message}
+                        </span>
+                    </div>
+                {/each}
 
-                <button type="submit">{`>>`}</button>
+                {#if chatResponse}
+                    <div>
+                        <span>
+                            ai:
+                            {#if abortController}
+                            <button type="button" onclick={abortChatResponse}>[abort]</button>
+                            {/if}
+                        </span>
+                        <span>
+                            {chatResponse}
+                        </span>
+                    </div>
+                {/if}
+
+                <input type="text" bind:value={chatText}>
+                <button type="submit" disabled={!!chatResponse}>{`>>`}</button>
             </form>
         {/if}
     </section>
