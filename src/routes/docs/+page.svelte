@@ -3,6 +3,7 @@
         {url: "https://kit.svelte.dev", title: "svelte kit", description: ""},
         {url: "https://svelte.dev/docs/introduction", title: "svelte docs", description: ""},
         {url: "https://svelte-5-preview.vercel.app/docs/introduction", title: "svelte 5 docs", description: ""},
+        {url: "https://editor.swagger.io/?url=https://raw.githubusercontent.com/unel/aai/main/src/lib/api/ollama/specification.openapi.yaml", title: "llama openai specification"},
     ];
 </script>
 

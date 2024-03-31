@@ -6,13 +6,13 @@ Anoter attempt to build ui for dev chat bots focused on multiple agents executio
 references: 
  - LangChain https://js.langchain.com
  - TestContainers https://testcontainers.com
- - ollama https://ollama.com
+ - ollama https://ollama.com, [openapi spec](https://editor.swagger.io/?url=https://raw.githubusercontent.com/unel/aai/main/src/lib/api/ollama/specification.openapi.yaml)
  - openwebui https://openwebui.com
  - huggingface https://huggingface.co
 
 
 ## ENV
-.env should include these keys:
+`.env` should include these keys:
 ```env
 AAI_BASE_URL = 'http://localhost:5173'
 OLLAMA_BASE_URL = 'http://localhost:11434'
