@@ -1,5 +1,13 @@
-import { json } from '@sveltejs/kit';
-import { api } from '$lib/api/ollama/instance';
+import { error } from '@sveltejs/kit';
+
+import { api as ollamaApi } from '$lib/api/ollama/instance';
+import { api as lmstudioApi} from '$lib/api/lmstudio/instance';
+import type { LLMAPI } from '$lib/api/types';
+
+const apiByProvider: Record<string, LLMAPI> = {
+    ollama: ollamaApi,
+    lmstudio: lmstudioApi,
+};
 
 async function* stringifyGenerator(asyncGen: AsyncGenerator) {
     for await (const data of asyncGen) {
@@ -29,8 +37,15 @@ export async function POST({ params, request }) {
         console.log('aborting connection', e);
     });
 
+    const api = apiByProvider[params.modelProvider];
+    if (!api) {
+        return error(500, `Unknown model provider: ${params.modelProvider}`);
+    }
+
+    const modelName = atob(params.modelName);
+
     const messages = api.generateCompletion({
-        modelName: params.modelName,
+        modelName,
         system: body.system,
         prompt: body.prompt,
         options: body.options,

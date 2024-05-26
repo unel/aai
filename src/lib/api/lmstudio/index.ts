@@ -13,16 +13,11 @@ type ModelDetails = {
 };
 
 export type Model = {
-    name: string;
-    model: string;
-    modified_at: string;
-    size: number;
-    digest: string;
-    details: ModelDetails;
+    id: string;
 };
 
 export type ModelsList = {
-    models: Model[];
+    data: Model[];
 };
 
 export type ModelInfo = {
@@ -49,7 +44,7 @@ type GenerateCompletionParams = {
 export function createApi({ baseUrl, fetcher }: CreateApiParams) {    
     return {
         async getModels(): Promise<ModelsList> {
-            return (await fetcher(`${baseUrl}/api/tags`)).json();
+            return (await fetcher(`${baseUrl}/v1/models`)).json();
         },
 
         async getModelInfo({ modelName }: { modelName: string }): Promise<ModelInfo> {
@@ -61,13 +56,15 @@ export function createApi({ baseUrl, fetcher }: CreateApiParams) {
 
         generateCompletion: async function* generateCompletion ({ modelName, prompt, system, options, signal }: GenerateCompletionParams) {
             const decoder = new TextDecoder();
-            const response = await fetcher(`${baseUrl}/api/generate`, { 
+            const response = await fetcher(`${baseUrl}/v1/chat/completions`, { 
                 method: 'POST',
                 body: JSON.stringify({
                     model: modelName,
-                    prompt,
-                    system,
-                    options,
+                    messages: [
+                        {"role": "system", content: system},
+                        {"role": "user", content: prompt},
+                    ],
+                    ...options,
                 }),
                 signal
             });

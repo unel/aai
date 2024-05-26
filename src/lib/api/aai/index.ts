@@ -3,10 +3,18 @@ type CreateApiParams = {
     fetcher: typeof fetch
 }
 
-import type { ModelsList, ModelInfo } from "../ollama";
+import type { ErrorDescription, ModelInfo } from "../../../routes/api/v[apiVersion]/models/+server";
+
+export type ModelsListResponse = {
+    data: ModelInfo[];
+    
+    errors: ErrorDescription[];
+};
+
 
 type GenerateCompletionParams = {
-    modelName: string;
+    provider: string;
+    modelId: string;
     prompt: string;
     system?: string;
     options?: Record<string, any>;
@@ -14,20 +22,20 @@ type GenerateCompletionParams = {
 
 export function createApi({ baseUrl = '', fetcher }: CreateApiParams) {    
     return {
-        async getModels(): Promise<ModelsList['models']> {
+        async getModels(): Promise<ModelsListResponse> {
             const response = await fetcher(`${baseUrl}/api/v1/models`);
-            return (await response.json()).models;
+            return (await response.json());
         },
 
-        async getModelInfo({ modelName }: { modelName: string }): Promise<ModelInfo> {
-            const response = await fetcher(`${baseUrl}/api/v1/models/${encodeURIComponent(modelName)}`);
+        async getModelInfo({ modelId }: { modelId: string }): Promise<ModelInfo> {
+            const response = await fetcher(`${baseUrl}/api/v1/models/${encodeURIComponent(modelId)}`);
             return (await response.json()).info;
         },
 
-        generateCompletion: async function* generateCompletion({ modelName, system, prompt, options, signal }: GenerateCompletionParams) {
+        generateCompletion: async function* generateCompletion({ provider, modelId, system, prompt, options, signal }: GenerateCompletionParams) {
             const decoder = new TextDecoder();
 
-            const response = await fetcher(`${baseUrl}/api/v1/models/${encodeURIComponent(modelName)}/completion`, {
+            const response = await fetcher(`${baseUrl}/api/v1/models/${provider}/${encodeURIComponent(btoa(modelId))}/completion`, {
                 method: 'POST', 
                 signal,
                 body: JSON.stringify({

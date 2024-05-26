@@ -16,56 +16,63 @@
 	let chatMessages: Array<{ author: string; message: string }> = $state([]);
 	let abortController: AbortController | undefined = $state();
 
-	let models: Model[] = $state(data.models);
+	let modelsData = $state(data.models);
+	let models: Array<Record<string, any>> = $state(modelsData.data ?? []);
+	let modelsErrors = $state(modelsData.errors);
+
 	let highlightedModel: string | undefined = $state();
 	let selectedModel: string | undefined = $state();
+	let selectedProvider: string | undefined = $state();
 
 	let modelsInfo: Record<string, ModelInfo> = $state({});
 
-	let activeModelName = $derived(highlightedModel || selectedModel);
-	let modelInfo = $derived(activeModelName ? modelsInfo[activeModelName] : undefined);
+	let activeModelId = $derived(highlightedModel || selectedModel);
+	let activeModelProvider = $derived(selectedProvider);
+	let modelInfo = $derived(activeModelId ? modelsInfo[activeModelId] : undefined);
 
 	async function refreshModels() {
-		models = await api.getModels();
+		modelsData = await api.getModels();
 	}
 
-	async function loadModelInfo(modelName: string) {
-		if (modelsInfo[modelName]) return;
+	async function loadModelInfo(modelId: string) {
+		if (modelsInfo[modelId]) return;
 
 		try {
-			const info = await api.getModelInfo({ modelName });
+			const info = await api.getModelInfo({ modelId });
 
 			if (info) {
-				modelsInfo[modelName] = info;
+				modelsInfo[modelId] = info;
 			}
 		} catch {}
 	}
 
-	function selectModel(modelName: string) {
-		selectedModel = modelName;
+	function selectModel(provider: string, modelId: string) {
+		selectedProvider = provider;
+		selectedModel = modelId;
 
-		loadModelInfo(modelName);
+		loadModelInfo(modelId);
 	}
 
 	function unselectModel() {
+		selectedProvider = undefined;
 		highlightedModel = undefined;
 	}
 
-	function highlightModel(modelName: string) {
-		highlightedModel = modelName;
+	function highlightModel(modelId: string) {
+		highlightedModel = modelId;
 
-		loadModelInfo(modelName);
+		loadModelInfo(modelId);
 	}
 
-	function unhighlightModel(modelName?: string) {
-		if (modelName && modelName !== highlightedModel) return;
+	function unhighlightModel(modelId?: string) {
+		if (modelId && modelId !== highlightedModel) return;
 
 		highlightedModel = undefined;
 	}
 
-	async function onChatSubmit(e: SubmitEvent, modelName?: string) {
+	async function onChatSubmit(e: SubmitEvent, provider?: string, modelId?: string) {
 		e.preventDefault();
-		if (!modelName) {
+		if (!modelId) {
 			return;
 		}
 		const userMessage = String(chatText);
@@ -73,11 +80,11 @@
 
 		chatMessages.push({ author: 'user', message: userMessage });
 
-		console.log(`sending ${chatText} to ${modelName}`);
+		console.log(`sending ${chatText} to ${modelId}`);
 		chatResponse = '';
 		abortController = new AbortController();
 		const signal = abortController.signal;
-		const messages = api.generateCompletion({ modelName, prompt: userMessage, signal });
+		const messages = api.generateCompletion({ provider, modelId, prompt: userMessage, signal });
 
 		for await (const message of messages) {
 			console.log('response with', message);
@@ -100,17 +107,27 @@
 </script>
 
 <h1>Models list</h1>
+{#if modelsErrors.length}
+	{#each modelsErrors as error}
+	<section class="error-block">
+		<div class="error-block__message">{error.provider}:: {error.message}</div>
 
+		<div class="error-block__trace">{error.trace}</div>
+	</section>
+	{/each}
+{/if}
+
+{#if models.length}
 <section class="models-block">
 	<ul class="models-list">
 		{#each models as model}
 			<li
-				class={`model-item${model.name === activeModelName ? ' model-item_ac' : ''}`}
-				onclick={() => selectModel(model.name)}
-				onmouseenter={() => highlightModel(model.name)}
-				onmouseleave={() => unhighlightModel(model.name)}
+				class={`model-item${model.id === activeModelId ? ' model-item_ac' : ''}`}
+				onclick={() => selectModel(model.provider, model.id)}
+				onmouseenter={() => highlightModel(model.id)}
+				onmouseleave={() => unhighlightModel(model.id)}
 			>
-				<b>{model.name}</b>
+				<b>{model.provider}:: {model.name}</b>
 			</li>
 		{/each}
 	</ul>
@@ -126,8 +143,8 @@
 			<pre>{JSON.stringify(modelInfo.details, undefined, 4)}</pre>
 		{/if}
 
-		{#if activeModelName}
-			<form class="chact-section" onsubmit={(e) => onChatSubmit(e, activeModelName)}>
+		{#if activeModelId}
+			<form class="chact-section" onsubmit={(e) => onChatSubmit(e, activeModelProvider, activeModelId)}>
 				<div class="chat-messages w-full">
 					{#each chatMessages as message}
 						<div class={`chat ${message.author === 'ai' ? 'chat-end' : 'chat-start'}`}>
@@ -166,10 +183,22 @@
 		{/if}
 	</section>
 </section>
+{/if}
 
 <button class="btn btn-sm" onclick={refreshModels}>refresh models</button>
 
 <style lan>
+	.error-block__message {
+		font-weight: bold;
+		color: red;
+	}
+
+	.error-block__trace {
+		color: black;
+		background-color: yellow;
+		white-space: pre;
+	}
+
 	.models-block {
 		display: flex;
 		flex-direction: row;
