@@ -30,6 +30,8 @@ async function* abortableGenerator(asyncGen: AsyncGenerator, { signal, controlle
 export async function POST({ params, request }) {
     const body = await request.json();
 
+    console.log('completion body', body);
+
     const abortController = new AbortController();
     const abortSignal = abortController.signal;
 

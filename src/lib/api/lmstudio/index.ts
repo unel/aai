@@ -37,7 +37,7 @@ type GenerateCompletionParams = {
     modelName: string;
     prompt: string;
     system?: string;
-    options?: Record<string, any>;
+    options?: Record<string, unknown>;
     signal?: AbortSignal;
 }
 
@@ -56,21 +56,32 @@ export function createApi({ baseUrl, fetcher }: CreateApiParams) {
 
         generateCompletion: async function* generateCompletion ({ modelName, prompt, system, options, signal }: GenerateCompletionParams) {
             const decoder = new TextDecoder();
-            const response = await fetcher(`${baseUrl}/v1/chat/completions`, { 
-                method: 'POST',
-                body: JSON.stringify({
-                    model: modelName,
-                    messages: [
-                        {"role": "system", content: system},
-                        {"role": "user", content: prompt},
-                    ],
-                    ...options,
-                }),
-                signal
+            const body = JSON.stringify({
+                model: modelName,
+                messages: [
+                    {"role": "system", content: system},
+                    {"role": "user", content: prompt},
+                ].filter(m => m.content),
+                stream: true,
+                ...options,
             });
+            const url = `${baseUrl}/v1/chat/completions`;
+            const fetchOptions = {
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                method: 'POST',
+                body,
+                signal
+            };
+            console.log('lmstudio generate completion', body);
+
+            // console.log(`fetch("${url}", ${JSON.stringify(fetchOptions)})`);
+            const response = await fetcher(url, fetchOptions);
 
             for await (const chunk of response.body) {
                 const data = JSON.parse(decoder.decode(chunk));
+                console.log('rd', data);
                 if (signal?.aborted) {
                     return;
                 }

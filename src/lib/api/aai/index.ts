@@ -17,7 +17,8 @@ type GenerateCompletionParams = {
     modelId: string;
     prompt: string;
     system?: string;
-    options?: Record<string, any>;
+    signal: AbortSignal;
+    options?: Record<string, unknown>;
 };
 
 export function createApi({ baseUrl = '', fetcher }: CreateApiParams) {    
@@ -44,8 +45,10 @@ export function createApi({ baseUrl = '', fetcher }: CreateApiParams) {
                     options,
                 }),
             });
+            const body = response.body;
+            if (!body) return;
 
-            for await (const chunk of response.body) {
+            for await (const chunk of ((body as unknown) as AsyncIterable<Uint8Array>)) {
                 const data = JSON.parse(decoder.decode(chunk));
                 console.log(data);
                 yield data;
